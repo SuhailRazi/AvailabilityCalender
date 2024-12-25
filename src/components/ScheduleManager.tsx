@@ -8,8 +8,6 @@ interface ScheduleManagerProps {
 }
 
 const ScheduleManager: React.FC<ScheduleManagerProps> = ({ userId }) => {
-  console.log(userId);
-
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [schedule, setSchedule] = useState<
@@ -23,6 +21,7 @@ const ScheduleManager: React.FC<ScheduleManagerProps> = ({ userId }) => {
     Saturday: [{ startTime: "09:00", endTime: "17:00" }],
     Sunday: [{ startTime: "09:00", endTime: "17:00" }],
   });
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchSchedule = async () => {
@@ -33,6 +32,7 @@ const ScheduleManager: React.FC<ScheduleManagerProps> = ({ userId }) => {
           setSchedule(data);
         }
       }
+      setLoading(false);
     };
     fetchSchedule();
   }, [userId]);
@@ -111,7 +111,17 @@ const ScheduleManager: React.FC<ScheduleManagerProps> = ({ userId }) => {
     }
   };
 
-  const filteredSchedule = selectedDays.map((day) => dayMapping[day]);
+  const filteredSchedule = selectedDays
+    .map((day) => dayMapping[day]) // Map to full day names
+    .filter((day) => schedule[day]); // Ensure schedule for the day exists
+
+  // Debug: log selectedDays and filteredSchedule
+  console.log("selectedDays:", selectedDays);
+  console.log("filteredSchedule:", filteredSchedule);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="flex flex-col">
@@ -123,23 +133,27 @@ const ScheduleManager: React.FC<ScheduleManagerProps> = ({ userId }) => {
         />
         <div className="mt-4">
           {/* Map only the filtered days */}
-          {filteredSchedule.map((day) => (
-            <div key={day} className="mb-4 flex flex-row gap-14">
-              <div className="flex-1">
-                <h3 className="font-semibold">{day}</h3>
+          {filteredSchedule.length > 0 ? (
+            filteredSchedule.map((day) => (
+              <div key={day} className="mb-4 flex flex-row gap-14">
+                <div className="flex-1">
+                  <h3 className="font-semibold">{day}</h3>
+                </div>
+                <div className="flex-2 mr-4">
+                  <TimeSlotManager
+                    slots={schedule[day]}
+                    onAdd={() => addSlot(day)}
+                    onRemove={(index) => removeSlot(day, index)}
+                    onSlotChange={(index, type, value) =>
+                      handleSlotChange(day, index, type, value)
+                    }
+                  />
+                </div>
               </div>
-              <div className="flex-2 mr-4">
-                <TimeSlotManager
-                  slots={schedule[day]}
-                  onAdd={() => addSlot(day)}
-                  onRemove={(index) => removeSlot(day, index)}
-                  onSlotChange={(index, type, value) =>
-                    handleSlotChange(day, index, type, value)
-                  }
-                />
-              </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p>No selected days</p> // Handle empty schedule or no days selected
+          )}
         </div>
         <div className="flex flex-row gap-4">
           <button
